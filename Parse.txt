@@ -1,0 +1,195 @@
+cat /dev/null >  /Desktop/TEXTFILE
+
+PATH1=/Desktop/mnode/toForwarding/bkup
+
+function calc_time_diff
+{
+
+time_diff=0
+
+CURR_YEAR=`date "+%Y"`
+CURR_MON=`date "+%m"`
+CURR_DAY=`date "+%d"`
+CURR_HR=`date "+%H"`
+CURR_MI=`date "+%M"`
+
+#echo $CURR_YEAR $CURR_MON $CURR_DAY $CURR_HR $CURR_MI
+
+CURR_MON="$(echo $CURR_MON | sed 's/0*//')"
+CURR_DAY="$(echo $CURR_DAY | sed 's/0*//')"
+
+if [ "$CURR_HR" = "00" ]; then
+CURR_HR="$(echo $CURR_HR | sed 's/00*/0/')"
+else
+CURR_HR="$(echo $CURR_HR | sed 's/0*//')"
+fi
+
+if [ "$CURR_MI" = "00" ]; then
+CURR_MI="$(echo $CURR_MI | sed 's/00*/0/')"
+else
+CURR_MI="$(echo $CURR_MI | sed 's/0*//')"
+fi
+
+#echo $CURR_YEAR $CURR_MON $CURR_DAY $CURR_HR $CURR_MI
+
+
+#echo "here"
+#echo $1 $2 $3
+
+if [ "$1" = "Jan"  ]; then
+FILE_MON=1
+elif [ "$1" = "Feb" ]; then
+FILE_MON=2
+elif [ "$1" = "Mar" ]; then
+FILE_MON=3
+elif [ "$1" = "Apr" ]; then
+FILE_MON=4
+elif [ "$1" = "May" ]; then
+FILE_MON=5
+elif [ "$1" = "Jun" ]; then
+FILE_MON=6
+elif [ "$1" = "Jul" ]; then
+FILE_MON=7
+elif [ "$1" = "Aug" ]; then
+FILE_MON=8
+elif [ "$1" = "Sep" ]; then
+FILE_MON=9
+elif [ "$1" = "Oct" ]; then
+FILE_MON=10
+elif [ "$1" = "Nov" ]; then
+FILE_MON=11
+elif [ "$1" = "Dec" ]; then
+FILE_MON=12
+fi
+
+FILE_HR=`echo $3 | cut -c1-2`
+FILE_MI=`echo $3 | cut -c4-5`
+
+#echo $FILE_MON $2 $FILE_HR $FILE_MI
+
+FILE_MON="$(echo $FILE_MON | sed 's/0*//')"
+FILE_DAY="$(echo $2 | sed 's/0*//')"
+
+
+if [ "$FILE_HR" = "00" ]; then
+FILE_HR="$(echo $FILE_HR | sed 's/0*/0/')"
+else
+FILE_HR="$(echo $FILE_HR | sed 's/0*//')"
+fi
+
+if [ "$FILE_MI" = "00" ]; then
+FILE_MI="$(echo $FILE_MI | sed 's/00*/0/')"
+else
+FILE_MI="$(echo $FILE_MI | sed 's/0*//')"
+fi
+
+
+curr_time_temp=$(( ${CURR_HR} * 60 ))
+curr_time=$(( $curr_time_temp + $CURR_MI ))
+#echo "curr_time: $curr_time"
+
+file_time_temp=$(( ${FILE_HR} * 60 ))
+file_time=$(( $file_time_temp + $FILE_MI ))
+#echo "file_time: $file_time"
+
+
+if [ "$CURR_MON" -eq "$FILE_MON" ]
+then
+
+   if [ "$CURR_DAY" -eq "$FILE_DAY" ]
+   then
+
+      time_diff=$(($curr_time - $file_time ))
+#      echo time_diff: $time_diff
+
+   elif [ "$CURR_DAY" -gt "$FILE_DAY" ]
+   then
+
+#     echo "---day crossing---"
+     time_diff=$((( 1440 + $curr_time) - $file_time ))
+#     echo time_diff: $time_diff
+
+   fi
+
+elif [ "$CURR_MON" -gt "$FILE_MON" ]
+then
+
+#echo "---month crossing---"
+time_diff=$((( 1440 + $curr_time) - $file_time ))
+#echo time_diff: $time_diff
+
+
+elif [ "$CURR_MON" -lt "$FILE_MON" ]
+then
+
+#echo "---year crossing---"
+time_diff=$((( 1440 + $curr_time) - $file_time ))
+echo time_diff: $time_diff
+
+
+fi
+
+
+}
+
+
+function parse_fields
+{
+
+COUNT=1
+for FIELD in $LIST
+  do
+     if [ $COUNT -eq 6 ]
+              then
+                  MONTH=$FIELD
+     elif [ $COUNT -eq 7 ]
+              then
+                  DAY=$FIELD
+     elif [ $COUNT -eq 8 ]
+              then
+                  TIME=$FIELD
+     elif [ $COUNT -eq 9 ]
+              then
+                  FLE_NAME=$FIELD
+
+
+     fi
+ COUNT=`expr $COUNT + 1`
+ done
+}
+
+cd ${MSC_PATH}
+
+
+FLE_NAME="No_file"
+LIST=`ls -lrt Sample1*|tail -1 2>/dev/null`
+parse_fields
+calc_time_diff $MONTH $DAY $TIME
+F_NAME=`echo $FLE_NAME|cut -d '/' -f6`
+echo  DG010" "$F_NAME" "$MONTH $DAY" "$TIME" "$time_diff >> /Desktop/first_level/sample_file_collection_status.txt
+#echo "-------------------------------------------------------------------------------------------------"
+
+FLE_NAME="No_file"
+LIST=`ls -lrt Sample2*|tail -1 2>/dev/null`
+parse_fields
+calc_time_diff $MONTH $DAY $TIME
+F_NAME=`echo $FLE_NAME|cut -d '/' -f6`
+echo  DG052" "$F_NAME" "$MONTH $DAY" "$TIME" "$time_diff >> /Desktop/first_level/sample_file_collection_status.txt
+#echo "-------------------------------------------------------------------------------------------------"
+
+FLE_NAME="No_file"
+LIST=`ls -lrt Sample3*|tail -1 2>/dev/null`
+parse_fields
+calc_time_diff $MONTH $DAY $TIME
+F_NAME=`echo $FLE_NAME|cut -d '/' -f6`
+echo  DG062" "$F_NAME" "$MONTH $DAY" "$TIME" "$time_diff >> /Desktop/first_level/sample_file_collection_status.txt
+#echo "-------------------------------------------------------------------------------------------------"
+
+
+OUTPUT:
+
+$ cat /Desktop/first_level/sample_file_collection_status.txt|head
+DG010 Sample1-5172.dat.20250109164232_20250109164403228 Jan 9 16:44 1
+DG052 Sample2-0054.dat.20250109164046_20250109164403030 Jan 9 16:44 1
+DG062 Sample3-8058.dat.20250109164158_20250109164402519 Jan 9 16:44 1
+
