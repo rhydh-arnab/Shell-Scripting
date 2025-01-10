@@ -1,0 +1,30 @@
+function  ok_notok(){
+cat /dev/null > /Desktop/gateway/Temp_files/f3_tempfile.txt
+l=`cat /Desktop/gateway/Temp_files/f2_tempfile.txt|wc -l`
+for t in $(seq 1 1 $l)
+do
+v_first=`head -$t /Desktop/gateway/Temp_files/f1_tempfile.txt|tail -1`
+f1_time=`head -$t /Desktop/gateway/Temp_files/f2_tempfile.txt|tail -1`
+f2_time=$(date --date="$f1_time" +%s);
+f3_time=$(date --date="$C_time" +%s);
+
+AA1=`echo "$(($f3_time-$f2_time))"`
+
+if [[ $AA1 -lt 1800 && $AA1 -ge 0 ]]
+then
+
+        cc=`echo "$v_first"|grep No_file`
+        if [[ $cc == '' ]]
+        then
+        echo "$v_first ok" >>/Desktop/gateway/Temp_files/f3_tempfile.txt
+        else
+        echo "$v_first Not_ok" >>/Desktop/gateway/Temp_files/f3_tempfile.txt
+        fi
+else
+
+echo "$v_first Not_ok" >>/Desktop/gateway/Temp_files/f3_tempfile.txt
+
+fi
+
+done
+}
