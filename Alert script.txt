@@ -1,0 +1,123 @@
+
+#!/bin/bash
+
+
+check_thresholds() {
+    local report_lines=("$@")
+    local problematic_line=()
+    local error_flag=0
+    local non_identified_flag=0
+
+    for line in "${report_lines[@]}"; do
+        IFS='|' read -ra data <<< "$line"
+        user="${data[1]}"
+        hits="${data[2]}"
+        error="${data[4]}"
+        non_identified="${data[6]}"
+        #echo "Processing user: $user, Hits: $hits, Error: $error, Non-Identified: $non_identified"
+        get_thresholds "$user"
+        #echo "Thresholds for $user: Error=$threshold_error, Non-Identified=$threshold_non_identified"
+        if (( error > threshold_error )); then
+            error_flag=1
+            problematic_line+=("$line")
+        fi
+        if (( non_identified > threshold_non_identified )); then
+            non_identified_flag=1
+            problematic_line+=("$line")
+        fi
+    done
+
+    #echo "Error Threshold Flag: $error_flag"
+    #echo "Non-Identified Threshold Flag: $non_identified_flag"
+    #echo "Problematic_lines: ${problematic_line[@]}"
+
+
+    if [ ${#problematic_line[@]} -gt 0 ]; then
+        msg=$(/usr/bin/hostname|rev |cut -c 1-6 | rev)"_ErNI"
+        for line in  "${problematic_line[@]}"; do
+           IFS='|' read -ra data <<< "$line"
+           user_initial="${data[1]:0:3}"
+           error="${data[4]}"
+           non_identified="${data[6]}"
+           line_summary="$user_initial$error$non_identified"
+           msg+="${line_summary}/"
+       done
+        msg=${msg// /_}
+        #echo "$msg"
+        #curl ## SMS Trigger ##  &from=LMS_Alert'
+
+
+    fi
+}
+
+
+get_thresholds() {
+    local user="$1"
+    #echo "$user"
+    case "$user" in
+        " mife_user ")
+            threshold_error=500
+            threshold_non_identified=5
+            ;;
+        " soam4454 ")
+            threshold_error=1500
+            threshold_non_identified=15
+            ;;
+        " ICMS_user ")
+            threshold_error=1000
+            threshold_non_identified=5
+            ;;
+        " Mah2643 ")
+            threshold_error=1000
+            threshold_non_identified=5
+            ;;
+        *)
+            # Default thresholds if user not found
+            threshold_error=500
+            threshold_non_identified=5
+            ;;
+    esac
+}
+
+
+read_last_5_minutes_report() {
+    local filename="$1"
+    local current_time
+    local last_5_minutes_data=()
+
+    current_time=$(date +"%Y-%m-%d %H:%M")
+    for ((i=1; i<6; i++)); do
+        timestamps+=( "$(date -d "-${i} min" +"%Y-%m-%d %H:%M")" )
+    done
+
+    #echo "Timestamps for last 5 minutes: ${timestamps[@]}"
+
+    while IFS= read -r line; do
+        if [[ "$line" == "Timestamps"* ]]; then
+            read -r line  # Skip the header line
+            # echo "skipped"
+            while IFS= read -r inner_line; do
+                #echo "inner"
+                for timestamp in "${timestamps[@]}"; do
+                    if [[ "$inner_line" == *"$timestamp"* ]]; then
+                        last_5_minutes_data+=("$inner_line")
+                        #echo "Found data for timestamp: $timestamp"
+                        break
+                    fi
+                done
+            done
+        fi
+    done < "$filename"
+
+    check_thresholds "${last_5_minutes_data[@]}"
+}
+
+main() {
+    cd /Path
+    local filename="activity_log_report.txt"
+    read_last_5_minutes_report "$filename"
+}
+
+# Run the script
+main
+
