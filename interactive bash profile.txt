@@ -1,0 +1,72 @@
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+        . /etc/bashrc
+fi
+
+# User specific aliases and functions
+###disable CTRL + C
+trap 'exit' 2
+###define new aliases
+alias ^C='exit'
+alias ctrl+c='exit'
+while :
+do
+
+echo "#####################################################################################################################"
+echo "---------------------------------------------------------------"
+echo "|                    Welcome_to_FLS_Portal                     |"
+echo "---------------------------------------------------------------"
+echo "                                         by Team ABC    "
+echo "                                         ..................    "
+echo " ------------------"
+echo "|     Main Menu    |"
+echo " ------------------"
+echo "[1] SYS Primary DUMP"
+echo "[2] SYS Secondary DUMP"
+echo "[3] IMS"
+echo "[4] Mnode"
+echo "[5] Gnode"
+echo "[6] SSIS"
+echo "[7] ALL"
+echo "[8] Exit"
+echo "--------------------------------------------------------------"
+echo -n "Enter your menu choice [1-8]: "
+read uchoice
+#--------------------[1] SYS Primary DUMP ---------------
+if [[ "$uchoice"  == 1 ]];
+then
+cat /Desktop/sys-pri-dump_collection_status.txt
+#--------------------[2] SYS Secondary DUMP -------------------
+elif [[ "$uchoice"  == 2 ]];
+then
+cat /Desktop/sys-sec-dump_collection_status.txt
+#--------------------[3] IMS ---------------
+elif [[ "$uchoice"  == 3 ]];
+then
+cat /Desktop/ims_file_collection_status_fls.txt
+#--------------------[4] Mnode -------------------
+elif [[ "$uchoice"  == 4 ]];
+then
+cat /Desktop/mnode_file_collection_status_fls.txt
+#--------------------[5] Gnode -------------------
+elif [[ "$uchoice"  == 5 ]];
+then
+cat /Desktop/gnode_file_collection_status_fls.txt
+#--------------------[6] SSIS -------------------
+elif [[ "$uchoice"  == 6 ]];
+then
+cat /Desktop/SSIS_collection_status.txt
+#--------------------[7] ALL -------------------
+elif [[ "$uchoice"  == 7 ]];
+then
+cat /Desktop/all_collection_status_fls.txt
+#----------  Exit -----------------#
+elif [[ "$uchoice"  == 8 ]];
+then
+echo "BYE"
+exit 0
+#
+else
+echo "Opps!!! Please select a choice from 1-8"
+fi
+done
