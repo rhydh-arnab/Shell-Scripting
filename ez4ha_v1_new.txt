@@ -1,0 +1,48 @@
+#!/bin/bash
+#HA controlling script to maintain cluster in physical server
+case "$1" in
+        start)
+				# Start cron and vsftpd services
+				/etc/init.d/vsftpd start
+				/etc/init.d/crond start
+				
+                # Startup Engine1 
+                /HA/online /JAVAdir/jdk1.8.0_181 /mdir/mz user Engine1
+                /HA/online /JAVAdir/jdk1.8.0_181 /mdir/mz user Engine2
+
+                ;;
+        stop)
+				# Stop cron and vsftpd services
+				/etc/init.d/crond stop
+				/etc/init.d/vsftpd stop
+		
+				# Kill all processes
+				for i in `ps -ef|grep -Ei 'user|rauser'|grep -Ev 'ssh|root|grep|bash'|awk '{print $2}'`; do kill -9 $i; done
+				
+                # Shutdown Engine1 Engine2 EC13 EC14 EC15
+                /HA/offline /JAVAdir/jdk1.8.0_181 /mdir/mz user Engine1
+                /HA/clean /JAVAdir/jdk1.8.0_181 /mdir/mz user Engine1
+                /HA/offline /JAVAdir/jdk1.8.0_181 /mdir/mz user Engine2
+                /HA/clean /JAVAdir/jdk1.8.0_181 /mdir/mz user Engine2
+
+                ;;
+        status)
+                # Monitor Engine1 Engine2 EC13 EC14 EC15
+                if [ `/HA/monitor /JAVAdir/jdk1.8.0_181 /mdir/mz user 6511` == "OK" ]; then
+                        UP=1
+                else
+                        UP=0
+                fi
+                if [ `/HA/monitor /JAVAdir/jdk1.8.0_181 /mdir/mz user 6512` == "OK" ]; then
+                        UP=`expr $UP + 1`
+                fi
+                if [ $UP -ge 1 ]; then
+                        echo "OK"
+                        exit 0
+                else
+                        echo "FAILED"
+                        exit 1
+                fi
+                ;;
+esac
+
