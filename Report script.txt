@@ -1,0 +1,192 @@
+## Reporting script
+
+cd /ORACLE PATH
+
+ORACLE_HOME=${ORACLE PATH}
+PATH=$PATH:$ORACLE_HOME/bin
+export ORACLE_HOME PATH
+
+USER="USER"
+PASSWORD="PASS"
+DSN="PLACE YOURS"
+echo "first phase" >> /Desktop/start.txt
+
+DATES=()
+for i in {8..2}; do
+    DATES+=($(/usr/bin/date -d "$i days ago" +%Y%m%d))
+done
+
+declare -A EVENT_TYPES
+EVENT_TYPES=(
+    ["Type1"]="1"
+    ["Type2"]="2"
+    ["Type3"]="3"
+    ["Type4"]="4"
+    ["Type5"]="5"
+    ["Type6"]="6"
+    ["Type7"]="7"
+    ["Type8"]="8"
+)
+
+VOICE_EVENTS=("Type1" "Type2" "Type3" "Type4")
+SMS_EVENTS=("Type5" "Type6" "Type7" "Type8")
+
+
+declare -A summary
+
+cleanup_data() {
+    echo "$1" | tr -d '\n' | sed 's/ \+/ /g'
+}
+
+for EVENT in "${VOICE_EVENTS[@]}"; do
+    EVENT_TYPE_ID="${EVENT_TYPES[$EVENT]}"
+
+    RATED=$(/home/oracle/product/12.2.0/Client_home/bin/sqlplus -s "$USER/$PASSWORD@$DSN" <<EOF
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SELECT TO_CHAR(event_dt, 'YYYYMMDD'), COUNT(*)
+FROM Table1
+WHERE EVENT_TYPE_ID='$EVENT_TYPE_ID'
+AND #conditions
+AND EVENT_DT BETWEEN TRUNC(SYSDATE-8) AND TRUNC(SYSDATE-1)
+GROUP BY TO_CHAR(event_dt, 'YYYYMMDD');
+EXIT;
+EOF
+)
+
+
+    ERROR=$(/home/oracle/product/12.2.0/Client_home/bin/sqlplus -s "$USER/$PASSWORD@$DSN" <<EOF
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SELECT TO_CHAR(event_dt, 'YYYYMMDD'), COUNT(*)
+FROM Table2
+WHERE EVENT_TYPE_ID='$EVENT_TYPE_ID'
+AND #conditions
+AND EVENT_DT BETWEEN TRUNC(SYSDATE-8) AND TRUNC(SYSDATE-1)
+GROUP BY TO_CHAR(event_dt, 'YYYYMMDD');
+EXIT;
+EOF
+
+)
+   # RATED=$(cleanup_data "$RATED")
+   # ERROR=$(cleanup_data "$ERROR")
+
+    while read -r event_date count; do
+        summary["$event_date,$EVENT,rated"]=$count
+    done <<< "$RATED"
+
+    while read -r event_date count; do
+        summary["$event_date,$EVENT,error"]=$count
+    done <<< "$ERROR"
+done
+
+for EVENT in "${SMS_EVENTS[@]}"; do
+    EVENT_TYPE_ID="${EVENT_TYPES[$EVENT]}"
+
+    RATED=$(/ORACLEPATH/sqlplus -s "$USER/$PASSWORD@$DSN" <<EOF
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SELECT TO_CHAR(event_dt, 'YYYYMMDD'), COUNT(*)
+FROM Table3
+WHERE EVENT_TYPE_ID='$EVENT_TYPE_ID'
+AND #conditions
+AND EVENT_DT BETWEEN TRUNC(SYSDATE-8) AND TRUNC(SYSDATE-1)
+GROUP BY TO_CHAR(event_dt, 'YYYYMMDD');
+EXIT;
+EOF
+)
+
+    ERROR=$(/ORACLE PATH/sqlplus -s "$USER/$PASSWORD@$DSN" <<EOF
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SELECT TO_CHAR(event_dt, 'YYYYMMDD'), COUNT(*)
+FROM Table4
+WHERE EVENT_TYPE_ID='$EVENT_TYPE_ID'
+AND #conditions
+AND EVENT_DT BETWEEN TRUNC(SYSDATE-8) AND TRUNC(SYSDATE-1)
+GROUP BY TO_CHAR(event_dt, 'YYYYMMDD');
+EXIT;
+EOF
+)
+    #RATED=$(cleanup_data "$RATED")
+    #ERROR=$(cleanup_data "$ERROR")
+
+    while read -r event_date count; do
+        summary["$event_date,$EVENT,rated"]=$count
+    done <<< "$RATED"
+
+    while read -r event_date count; do
+        summary["$event_date,$EVENT,error"]=$count
+    done <<< "$ERROR"
+done
+
+html_escape() {
+  local input="$1"
+  input="${input//&/&amp;}"
+  input="${input//</&lt;}"
+  input="${input//>/&gt;}"
+  input="${input//\"/&quot;}"
+  echo "$input"
+}
+
+generate_table() {
+    local events=("$@")
+    local output="<table border='1' cellpadding='5' cellspacing='0'><tr><th>Date</th>"
+
+    for event in "${events[@]}"; do
+        output+="<th colspan='4'>$event</th>"
+    done
+
+    output+="</tr><tr><th></th>"
+
+    for event in "${events[@]}"; do
+        output+="<th>Total</th><th>Rated</th><th>Error</th><th>%</th>"
+    done
+
+    output+="</tr>"
+
+    for DATE in "${REVERSED_DATES[@]}"; do
+        display_date=$(/usr/bin/date -d $DATE +%d/%m/%Y)
+        output+="<tr><td>$display_date</td>"
+        for event in "${events[@]}"; do
+            rated=${summary["$DATE,$event,rated"]}
+            error=${summary["$DATE,$event,error"]}
+            rated=${rated:-0}
+            error=${error:-0}
+            rated=$(echo "$rated" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+            error=$(echo "$error" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+            total=$((rated + error))
+            total=$(echo "$total" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+            if [[ "$total" -ne 0 ]]; then
+                percentage=$(awk "BEGIN {printf \"%.2f\", ($error / $total) * 100}")
+            else
+                percentage="0.00"
+            fi
+            #output+="<td>$total</td><td>$rated</td><td>$error</td><td>$percentage</td>"
+            output+="<td>$(html_escape "$total")</td>"
+            output+="<td>$(html_escape "$rated")</td>"
+            output+="<td>$(html_escape "$error")</td>"
+            output+="<td>$(html_escape "$percentage")</td>"
+        done
+        output+="</tr>"
+    done
+
+    output+="</table>"
+    echo "$output"
+}
+
+
+
+REVERSED_DATES=($(echo ${DATES[@]} | tac -s ' '))
+
+voice_table=$(generate_table "${VOICE_EVENTS[@]}")
+sms_table=$(generate_table "${SMS_EVENTS[@]}")
+
+EMAIL_SUBJECT="Daily Report"
+EMAIL_TO="Recipient Name"
+EMAIL_BODY="Dear Concerned,<br><br>Please find the daily voice and sms summary report of ICB below:<br><br><b>Voice Report:</b><br><br>$voice_table<br><br><b>SMS Report:</b><br><br>$sms_table<br><br>This is an auto-generated mail.<br>Please do not reply.<br><br>Regards,<br>reportAdmin"
+
+EMAIL_FILE="/Desktop/script/emailbody.html"
+echo "$EMAIL_BODY" > $EMAIL_FILE
+
+python3 /Desktop/script/send_email.py $EMAIL_FILE $EMAIL_TO "$EMAIL_SUBJECT"
